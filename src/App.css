@@ -1,0 +1,9 @@
+#text-editor-content {
+  height: 100%;
+  width: 100%;
+}
+
+.ProseMirror {
+  height: 100%;
+  outline: none;
+}

@@ -1,4 +1,4 @@
-import { Command, Plugin, PluginKey, TextSelection, Transaction } from "prosemirror-state";
+import { Command, Plugin, PluginKey, Transaction } from "prosemirror-state";
 import { undo, redo } from "prosemirror-history";
 import { dispatchLateralMove, dispatchParagraphBoundary, dispatchVerticalPosition } from "../../utils/commands";
 
@@ -78,7 +78,18 @@ export const pmVim = () => {
 
             "Shift-$": dispatchParagraphBoundary(1),
 
-            "Shift-^": dispatchParagraphBoundary(-1)
+            "Shift-^": dispatchParagraphBoundary(-1),
+
+            "Shift-A": (state, ogDispatch) => {
+              if (!ogDispatch) return false;
+              const dispatch = (tr: Transaction) => {
+                tr.setMeta(this, { modeChange: VimMode.Insert });
+                ogDispatch(tr);
+              }
+              dispatchParagraphBoundary(1)(state, dispatch)
+
+              return true;
+            }
           },
           [VimMode.Insert]: {
             "Escape": ({}) => {

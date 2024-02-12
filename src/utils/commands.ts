@@ -72,6 +72,7 @@ export const dispatchParagraphBoundary: (side: number) => Command = (side) => (s
 
   const newSelection = new TextSelection(state.doc.resolve(foundPos ?? 0) , state.doc.resolve(foundPos ?? 0))
 
+  console.log('dispatch')
   dispatch(state.tr.setSelection(newSelection))
 
   return true;

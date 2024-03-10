@@ -1,8 +1,10 @@
 import { Command, Plugin, PluginKey, Transaction } from "prosemirror-state";
 import { undo, redo } from "prosemirror-history";
-import { dispatchLateralMove, dispatchParagraphBoundary, dispatchVerticalPosition } from "../../utils/commands";
+import { dispatchLateralMove, dispatchParagraphBoundary, dispatchVerticalPosition, wrapForVimChange } from "../../utils/commands";
+import { Extension } from "@tiptap/core";
+import { pmPlugin } from "../../App";
 
-enum VimMode {
+export enum VimMode {
   Insert,
   Normal,
   Visual
@@ -12,10 +14,10 @@ type PmVimState = {
   mode: VimMode
 }
 
+export const pmVimPluginKey = new PluginKey("PMVim");
 export const pmVim = () => {
-  let pluginKey = new PluginKey("PMVim");
   let plugin = new Plugin<PmVimState>({
-    key: pluginKey,
+    key: pmVimPluginKey,
     state: {
       init: () => {
         return {
@@ -23,16 +25,16 @@ export const pmVim = () => {
         };
       },
       apply: (transaction, state) => {
-        if (transaction.getMeta(plugin))
-
+        if (transaction.getMeta(plugin)) {
           state.mode = transaction.getMeta(plugin)?.modeChange;
+        }
 
-          return state;
+        return state;
       }
     },
     filterTransaction: (transaction, state) => {
-      const isValidTransaction = !transaction.docChanged || transaction.getMeta(pluginKey)?.triggeredByVimKey;
-      const isInsertMode = pluginKey.getState(state).mode === VimMode.Insert;
+      const isValidTransaction = !transaction.docChanged || transaction.getMeta(pmVimPluginKey)?.triggeredByVimKey || transaction.getMeta("paste") || transaction.getMeta("clear");
+      const isInsertMode = pmVimPluginKey.getState(state).mode === VimMode.Insert;
       if (!isValidTransaction && !isInsertMode) return false;
       return true;
     },
@@ -42,17 +44,6 @@ export const pmVim = () => {
 
         const modifierPrefix = event.shiftKey ? "Shift-" : event.altKey ? "Alt-" : event.ctrlKey ? "Ctrl-" : event.metaKey ? "Meta-" : '';
         const key = `${modifierPrefix}${event.key}`;
-
-        const wrapForVimChange: (command: Command) => Command = (command: Command) => (state, ogDispatch): boolean => {
-            if (!ogDispatch) return false;
-
-            const dispatch = (transaction: Transaction) => {
-              transaction.setMeta(pluginKey, { triggeredByVimKey: true })
-              ogDispatch(transaction);
-            }
-            command(state, dispatch, view)
-            return true;
-        }
 
         const keyBinds: Record<VimMode, Record<string, Command>> = {
           [VimMode.Normal]: {
@@ -110,3 +101,11 @@ export const pmVim = () => {
   });
   return plugin;
 }
+
+export const Vim = Extension.create({
+  addProseMirrorPlugins() {
+      return [
+        pmVim()
+    ]
+  },
+});
